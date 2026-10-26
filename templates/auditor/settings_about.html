@@ -1,0 +1,31 @@
+﻿{% extends "auditor/base.html" %}
+
+{% block content %}
+<div class="two-col-layout">
+  <div class="card">
+    <h3>System &amp; AI Configuration Status</h3>
+    <ul class="fact-list" style="margin-top: 12px;">
+      <li>
+        <strong>Operating Mode:</strong>
+        {% if AI_EXTRACTION_ACTIVE %}
+          <span class="badge badge-success">Mode A: AI-Assisted Extraction Enabled</span>
+        {% else %}
+          <span class="badge badge-demo">Mode B: Demo &amp; Manual Mode (No API Key Configured)</span>
+        {% endif %}
+      </li>
+      <li><strong>Configured Gemini Model:</strong> <code>{{ CONFIGURED_GEMINI_MODEL }}</code></li>
+      <li><strong>Financial Engine Precision:</strong> Python <code>decimal.Decimal</code> (<code>ROUND_HALF_UP</code> to <code>0.01</code>)</li>
+      <li><strong>Upload Validation:</strong> Server-side MIME, extension, 10 MB limit, and binary verification (Pillow &amp; pypdf)</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>Architectural Safeguards &amp; Disclaimers</h3>
+    <ul class="fact-list" style="margin-top: 12px;">
+      <li><strong>Strict Separation of Concerns:</strong> The LLM never performs financial math or invents billing rules.</li>
+      <li><strong>No Double-Counting:</strong> Overlapping findings on the same line item are deduplicated automatically.</li>
+      <li><strong>Not Medical or Legal Advice:</strong> CureClaim is a transparent billing-review aid.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

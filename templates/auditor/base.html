@@ -1,0 +1,88 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page_title|default:"CureClaim" }} — CureClaim Hospital Bill Auditor</title>
+  <link rel="stylesheet" href="{% static 'auditor/css/style.css' %}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="{% url 'auditor:dashboard' %}" class="brand-link">
+          <span class="brand-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M9 12l2 2 4-4"/>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </span>
+          <div>
+            <span class="brand-name">CureClaim</span>
+            <span class="brand-tagline">Evidence-Backed Bill Audit</span>
+          </div>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="{% url 'auditor:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'auditor:upload' %}" class="nav-item {% if request.resolver_match.url_name == 'upload' %}active{% endif %}">New Audit (Upload)</a>
+        <a href="{% url 'auditor:manual_entry' %}" class="nav-item {% if request.resolver_match.url_name == 'manual_entry' %}active{% endif %}">Manual Bill Entry</a>
+        <a href="{% url 'auditor:audit_history' %}" class="nav-item {% if request.resolver_match.url_name == 'audit_history' or request.resolver_match.url_name == 'audit_detail' %}active{% endif %}">Audit History</a>
+        <a href="{% url 'auditor:rules' %}" class="nav-item {% if request.resolver_match.url_name == 'rules' %}active{% endif %}">Billing Rules</a>
+        <a href="{% url 'auditor:settings_about' %}" class="nav-item {% if request.resolver_match.url_name == 'settings_about' %}active{% endif %}">Settings &amp; About</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="principle-box">
+          <strong>Core Principle</strong>
+          <p>AI transcribes documents. Deterministic code performs math. Sourced rules back every finding.</p>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-titles">
+          <h1 class="page-title">{{ page_title|default:"CureClaim" }}</h1>
+          {% if page_subtitle %}
+            <p class="page-subtitle">{{ page_subtitle }}</p>
+          {% endif %}
+        </div>
+        <div class="topbar-status">
+          {% if AI_EXTRACTION_ACTIVE %}
+            <span class="mode-pill mode-ai">
+              <span class="dot"></span> AI Extraction Active ({{ CONFIGURED_GEMINI_MODEL }})
+            </span>
+          {% else %}
+            <span class="mode-pill mode-demo">
+              <span class="dot"></span> DEMO MODE — Synthetic sample data. External AI extraction is not active.
+            </span>
+          {% endif %}
+        </div>
+      </header>
+
+      <main class="content-container">
+        {% if messages %}
+          <div class="messages-stack">
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags|default:'info' }}">
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="app-footer">
+        <span><strong>CureClaim</strong> — Your Hospital Bill. Audited With Evidence.</span>
+        <span>Billing-review aid only • Not medical or legal advice</span>
+      </footer>
+    </div>
+  </div>
+  <script src="{% static 'auditor/js/app.js' %}"></script>
+</body>
+</html>

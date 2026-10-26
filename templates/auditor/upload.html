@@ -1,0 +1,85 @@
+﻿{% extends "auditor/base.html" %}
+
+{% block content %}
+<div class="two-col-layout">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3>Upload Hospital Bill Document</h3>
+        <p class="card-subtitle">Supported formats: JPG, JPEG, PNG, PDF (maximum 10 MB).</p>
+      </div>
+    </div>
+
+    {% if not AI_EXTRACTION_ACTIVE %}
+      <div class="alert alert-warning">
+        <div>
+          <strong>DEMO MODE — External AI Extraction Is Not Active</strong>
+          <p style="margin-top: 4px;">
+            No <code>GEMINI_API_KEY</code> is configured in your environment. CureClaim never simulates fake AI
+            responses for uploaded real documents. Use our offline workflows or configure <code>GEMINI_API_KEY</code> in <code>.env</code>:
+          </p>
+          <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{% url 'auditor:launch_demo' %}" class="btn btn-sm btn-primary">Launch Synthetic Demo (DEMO-001)</a>
+            <a href="{% url 'auditor:manual_entry' %}" class="btn btn-sm btn-outline">Use Manual Bill Entry</a>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="upload-form" class="stacked-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-error">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" name="bill_file" id="id_bill_file" accept=".jpg,.jpeg,.png,.pdf" required class="file-input-hidden">
+        <div class="dropzone-content">
+          <p class="dropzone-title">Drag and drop your hospital bill here, or <span class="link-highlight">browse files</span></p>
+          <p class="dropzone-hint">High-contrast, well-lit photographs or original digital PDFs yield the highest accuracy.</p>
+          <div id="file-selection-info" class="file-selection-pill hidden">
+            <span id="selected-filename">No file selected</span>
+            <span id="selected-filesize" class="badge badge-neutral"></span>
+          </div>
+        </div>
+      </div>
+      {% if form.bill_file.errors %}
+        <div class="field-error">{{ form.bill_file.errors }}</div>
+      {% endif %}
+
+      <div class="form-group">
+        <label for="id_scheme_context">{{ form.scheme_context.label }}</label>
+        {{ form.scheme_context }}
+      </div>
+
+      <div class="consent-box">
+        <label class="checkbox-label">
+          {{ form.confirm_external_ai }}
+          <span><strong>External AI Processing Disclosure:</strong> {{ form.confirm_external_ai.label }}</span>
+        </label>
+      </div>
+
+      <div id="upload-progress-indicator" class="processing-banner hidden">
+        <span>Validating file integrity and extracting structured line items... Please wait.</span>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" {% if not AI_EXTRACTION_ACTIVE %}disabled{% endif %}>
+          Extract &amp; Review Bill Items
+        </button>
+        <a href="{% url 'auditor:manual_entry' %}" class="btn btn-outline">Switch to Manual Entry</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>How Document Extraction &amp; Auditing Work</h3>
+    <ol class="guideline-list" style="padding-left: 18px; display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
+      <li><strong>Server-Side File Validation:</strong> Verifies file extension, 10 MB limit, and binary headers using Pillow and pypdf.</li>
+      <li><strong>Strict Optical Transcription:</strong> Transcribes only visible descriptions, quantities, rates, and amounts into JSON without inventing missing values.</li>
+      <li><strong>Mandatory Human Review Step:</strong> Any blurred or missing numbers are highlighted in amber for confirmation before auditing.</li>
+      <li><strong>Deterministic Audit Engine:</strong> Python <code>Decimal</code> code verifies every line calculation and checks database rules.</li>
+    </ol>
+  </div>
+</div>
+{% endblock %}

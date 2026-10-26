@@ -1,0 +1,82 @@
+﻿{% extends "auditor/base.html" %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Manual Hospital Bill Entry</h3>
+      <p class="card-subtitle">Enter hospital bill line items directly. Works completely offline without an API key.</p>
+    </div>
+    <a href="{% url 'auditor:launch_demo' %}" class="btn btn-sm btn-outline">Or Load Synthetic Demo (DEMO-001)</a>
+  </div>
+
+  <form method="post" id="bill-items-form" class="stacked-form">
+    {% csrf_token %}
+    <div class="form-grid-3">
+      <div class="form-group"><label>Hospital Name *</label>{{ header_form.hospital_name }}</div>
+      <div class="form-group"><label>Bill / Invoice Reference *</label>{{ header_form.bill_reference }}</div>
+      <div class="form-group"><label>Invoice Date</label>{{ header_form.bill_date }}</div>
+      <div class="form-group"><label>Treatment / Package Name</label>{{ header_form.treatment_package }}</div>
+      <div class="form-group"><label>Applicable Rule / Package Context *</label>{{ header_form.scheme_context }}</div>
+      <div class="form-group"><label>Reported Grand Total (₹) *</label>{{ header_form.reported_grand_total }}</div>
+    </div>
+
+    <div class="form-group" style="max-width: 360px;">
+      <label>Documented Adjustments: Taxes (+) / Discounts (-) (₹)</label>
+      {{ header_form.documented_adjustments }}
+    </div>
+
+    <div class="section-bar">
+      <h4>Bill Line Items</h4>
+      <button type="button" class="btn btn-sm btn-secondary" id="add-line-item-btn">+ Add Row</button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table editable-table" id="line-items-table">
+        <thead>
+          <tr>
+            <th>Item Description *</th>
+            <th>Quantity</th>
+            <th>Unit</th>
+            <th>Unit Price (₹)</th>
+            <th>Billed Line Total (₹)</th>
+            <th>Item Code</th>
+            <th>Remove</th>
+          </tr>
+        </thead>
+        <tbody id="line-items-tbody">
+          <tr class="line-item-row">
+            <td><input type="text" name="item_description[]" placeholder="e.g., Consultation" required class="table-input"></td>
+            <td><input type="number" step="0.01" name="item_quantity[]" value="1" class="table-input calc-qty"></td>
+            <td><input type="text" name="item_unit[]" value="visit" class="table-input"></td>
+            <td><input type="number" step="0.01" name="item_unit_price[]" placeholder="800.00" class="table-input calc-price"></td>
+            <td><input type="number" step="0.01" name="item_billed_total[]" placeholder="800.00" class="table-input calc-total"></td>
+            <td><input type="text" name="item_code[]" placeholder="Optional" class="table-input"></td>
+            <td><button type="button" class="btn-icon remove-row-btn">&times;</button></td>
+          </tr>
+          <tr class="line-item-row">
+            <td><input type="text" name="item_description[]" placeholder="e.g., Room charges" class="table-input"></td>
+            <td><input type="number" step="0.01" name="item_quantity[]" value="2" class="table-input calc-qty"></td>
+            <td><input type="text" name="item_unit[]" value="days" class="table-input"></td>
+            <td><input type="number" step="0.01" name="item_unit_price[]" placeholder="3000.00" class="table-input calc-price"></td>
+            <td><input type="number" step="0.01" name="item_billed_total[]" placeholder="6000.00" class="table-input calc-total"></td>
+            <td><input type="text" name="item_code[]" placeholder="Optional" class="table-input"></td>
+            <td><button type="button" class="btn-icon remove-row-btn">&times;</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="live-totals-bar">
+      <div><span>Live Sum of Expected (Qty &times; Price): </span><strong id="live-expected-subtotal">₹0.00</strong></div>
+      <div><span>Live Sum of Billed Line Totals: </span><strong id="live-billed-subtotal">₹0.00</strong></div>
+      <button type="button" class="btn btn-sm btn-outline" id="copy-subtotal-to-grand-btn">Copy Billed Subtotal to Grand Total</button>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Run Deterministic Audit</button>
+      <a href="{% url 'auditor:dashboard' %}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

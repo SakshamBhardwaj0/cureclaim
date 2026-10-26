@@ -1,0 +1,81 @@
+﻿{% extends "auditor/base.html" %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Step 2: Review &amp; Confirm Extracted Bill Data</h3>
+      <p class="card-subtitle">Verify and correct any fields below before running the final deterministic audit.</p>
+    </div>
+    <span class="mono-id">{{ session.audit_uid }}</span>
+  </div>
+
+  <form method="post" id="bill-items-form" class="stacked-form">
+    {% csrf_token %}
+    <div class="form-grid-3">
+      <div class="form-group"><label>Hospital Name *</label>{{ header_form.hospital_name }}</div>
+      <div class="form-group"><label>Bill / Invoice Reference *</label>{{ header_form.bill_reference }}</div>
+      <div class="form-group"><label>Invoice Date</label>{{ header_form.bill_date }}</div>
+      <div class="form-group"><label>Stated Treatment / Package</label>{{ header_form.treatment_package }}</div>
+      <div class="form-group"><label>Billing / Rule Context *</label>{{ header_form.scheme_context }}</div>
+      <div class="form-group"><label>Reported Grand Total ({{ session.currency }}) *</label>{{ header_form.reported_grand_total }}</div>
+    </div>
+
+    <div class="form-group" style="max-width: 360px;">
+      <label>Documented Net Adjustments / Taxes ({{ session.currency }})</label>
+      {{ header_form.documented_adjustments }}
+    </div>
+
+    <div class="section-bar">
+      <h4>Extracted Line Items</h4>
+      <button type="button" class="btn btn-sm btn-secondary" id="add-line-item-btn">+ Add Line Item Row</button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table editable-table" id="line-items-table">
+        <thead>
+          <tr>
+            <th>Item Description *</th>
+            <th>Quantity</th>
+            <th>Unit</th>
+            <th>Unit Price (₹)</th>
+            <th>Billed Total (₹)</th>
+            <th>Item Code</th>
+            <th>Status / Action</th>
+          </tr>
+        </thead>
+        <tbody id="line-items-tbody">
+          {% for item in items %}
+            <tr class="line-item-row {% if item.verification_status == 'NEEDS_VERIFICATION' %}row-uncertain{% endif %}">
+              <td><input type="text" name="item_description[]" value="{{ item.original_description }}" required class="table-input"></td>
+              <td><input type="number" step="0.01" name="item_quantity[]" value="{{ item.quantity|default_if_none:'' }}" class="table-input calc-qty" placeholder="Missing"></td>
+              <td><input type="text" name="item_unit[]" value="{{ item.unit }}" class="table-input"></td>
+              <td><input type="number" step="0.01" name="item_unit_price[]" value="{{ item.unit_price|default_if_none:'' }}" class="table-input calc-price" placeholder="Missing"></td>
+              <td><input type="number" step="0.01" name="item_billed_total[]" value="{{ item.billed_line_total|default_if_none:'' }}" class="table-input calc-total" placeholder="Missing"></td>
+              <td><input type="text" name="item_code[]" value="{{ item.item_code|default_if_none:'' }}" class="table-input"></td>
+              <td>
+                {% if item.verification_status == 'NEEDS_VERIFICATION' %}
+                  <span class="badge badge-warning">Verify</span>
+                {% else %}
+                  <span class="badge badge-success">OK</span>
+                {% endif %}
+                <button type="button" class="btn-icon remove-row-btn">&times;</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="live-totals-bar">
+      <div><span>Live Sum of Expected (Qty &times; Price): </span><strong id="live-expected-subtotal">₹0.00</strong></div>
+      <div><span>Live Sum of Billed Line Totals: </span><strong id="live-billed-subtotal">₹0.00</strong></div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Confirm Data &amp; Run Audit Engine</button>
+      <a href="{% url 'auditor:audit_detail' session.audit_uid %}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

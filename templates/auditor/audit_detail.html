@@ -1,0 +1,235 @@
+﻿{% extends "auditor/base.html" %}
+{% load humanize %}
+
+{% block content %}
+{% if session.is_demo or session.scheme_context == 'EXAMPLE_SURGICAL_PKG_01' %}
+  <div class="alert alert-demo">
+    <div>
+      <strong>DEMO MODE — Synthetic Demonstration Scenario ({{ session.bill_reference }})</strong>
+      <p style="margin-top: 4px;">
+        This audit evaluates synthetic demonstration data from <strong>{{ session.hospital_name }}</strong>.
+        The figures and the package-inclusion rule (<code>DEMO-PKG-GLOVES-01</code>) are invented solely to
+        demonstrate CureClaim's deterministic rule engine and are marked <strong>DEMO ONLY — NOT OFFICIAL GUIDANCE</strong>.
+      </p>
+    </div>
+  </div>
+{% endif %}
+
+<div class="detail-action-bar">
+  <div class="status-group">
+    <span class="mono-id">{{ session.audit_uid }}</span>
+    <span class="status-pill status-{{ session.processing_status|lower }}">{{ session.get_processing_status_display }}</span>
+    <span class="badge badge-neutral">{{ session.get_ai_extraction_status_display }}</span>
+  </div>
+  <div class="action-buttons">
+    <a href="{% url 'auditor:review_extraction' session.audit_uid %}" class="btn btn-sm btn-outline">Edit / Correct Extracted Items</a>
+    <a href="{% url 'auditor:download_report_pdf' session.audit_uid %}" class="btn btn-sm btn-primary">Download PDF Audit Report</a>
+  </div>
+</div>
+
+<section class="kpi-grid">
+  <div class="kpi-card">
+    <span class="kpi-label">Total Bill Amount</span>
+    <strong class="kpi-value">{{ session.currency }} {{ session.reported_grand_total|floatformat:2|intcomma }}</strong>
+    <span class="kpi-footnote">
+      Sum of line items: {{ session.currency }} {{ session.computed_line_total|floatformat:2|intcomma }}
+      {% if is_reconciled %}(Reconciled ✓){% else %}(Mismatch !){% endif %}
+    </span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-label">Items Analysed</span>
+    <strong class="kpi-value">{{ items|length }}</strong>
+    <span class="kpi-footnote">{{ session.items_needing_verification_count }} item(s) awaiting verification</span>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-label">Findings</span>
+    <strong class="kpi-value kpi-amber">{{ active_findings|length }}</strong>
+    <span class="kpi-footnote">Verified arithmetic discrepancy: {{ session.currency }} {{ session.verified_arithmetic_discrepancy|floatformat:2|intcomma }}</span>
+  </div>
+  <div class="kpi-card kpi-highlight">
+    <span class="kpi-label">Potential Amount to Review</span>
+    <strong class="kpi-value kpi-teal">{{ session.currency }} {{ session.potential_amount_to_review|floatformat:2|intcomma }}</strong>
+    <span class="kpi-footnote">Deduplicated estimate requiring billing review</span>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h3>Line-Item Audit Breakdown</h3>
+      <p class="card-subtitle">
+        Hospital: <strong>{{ session.hospital_name }}</strong> |
+        Bill Ref: <strong>{{ session.bill_reference }}</strong> |
+        Context: <strong>{{ session.treatment_package|default:session.scheme_context }}</strong>
+      </p>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item</th>
+          <th class="num-col">Quantity</th>
+          <th class="num-col">Unit Price</th>
+          <th class="num-col">Billed Total</th>
+          <th class="num-col">Calculated (Qty &times; Rate)</th>
+          <th>Audit Status</th>
+          <th>Finding</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+          <tr class="{% if item.audit_badge != 'NO_ISSUE' %}row-flagged{% endif %}">
+            <td>{{ item.line_number }}</td>
+            <td>
+              <strong>{{ item.original_description }}</strong>
+              {% if item.item_code %}<span class="muted-small">({{ item.item_code }})</span>{% endif %}
+            </td>
+            <td class="num-col">{% if item.quantity is not None %}{{ item.quantity|floatformat:2 }} {{ item.unit }}{% else %}<span class="badge badge-warning">Missing</span>{% endif %}</td>
+            <td class="num-col">{% if item.unit_price is not None %}{{ session.currency }} {{ item.unit_price|floatformat:2|intcomma }}{% else %}<span class="badge badge-warning">Missing</span>{% endif %}</td>
+            <td class="num-col">{% if item.billed_line_total is not None %}<strong>{{ session.currency }} {{ item.billed_line_total|floatformat:2|intcomma }}</strong>{% else %}<span class="badge badge-warning">Missing</span>{% endif %}</td>
+            <td class="num-col">{% if item.computed_line_total is not None %}{{ session.currency }} {{ item.computed_line_total|floatformat:2|intcomma }}{% else %}N/A{% endif %}</td>
+            <td>
+              {% if item.audit_badge == 'CALC_MISMATCH' %}
+                <span class="badge badge-danger">Calculation Mismatch</span>
+              {% elif item.audit_badge == 'POTENTIAL_DUPLICATE' %}
+                <span class="badge badge-warning">Potential Duplicate</span>
+              {% elif item.audit_badge == 'RULE_FINDING' %}
+                <span class="badge badge-warning">Rule-Based Finding</span>
+              {% elif item.audit_badge == 'NEEDS_VERIFICATION' %}
+                <span class="badge badge-neutral">Needs Verification</span>
+              {% else %}
+                <span class="badge badge-success">No Issue Detected</span>
+              {% endif %}
+            </td>
+            <td>
+              {% with item_findings=item.findings.all %}
+                {% if item_findings %}
+                  <a href="#finding-panel-{{ item_findings.0.id }}">Inspect Evidence ({{ item_findings|length }}) &darr;</a>
+                {% else %}
+                  <span class="muted-small">Reconciled</span>
+                {% endif %}
+              {% endwith %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="table-footer-row">
+          <td colspan="4"><strong>Total of Listed Line Items</strong></td>
+          <td class="num-col"><strong>{{ session.currency }} {{ session.computed_line_total|floatformat:2|intcomma }}</strong></td>
+          <td class="num-col">Reported Grand Total: <strong>{{ session.currency }} {{ session.reported_grand_total|floatformat:2|intcomma }}</strong></td>
+          <td colspan="2">
+            {% if is_reconciled %}
+              <span class="badge badge-success">Grand Total Reconciles ✓</span>
+            {% else %}
+              <span class="badge badge-danger">Unexplained Diff: {{ session.currency }} {{ reconciliation_diff|floatformat:2|intcomma }}</span>
+            {% endif %}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <div>
+      <h3>Evidence-Backed Findings &amp; Calculation Trace</h3>
+      <p class="card-subtitle">Inspect extracted bill facts, deterministic calculation formulas, rule verification status, and recommended next steps.</p>
+    </div>
+  </div>
+
+  {% if active_findings %}
+    <div class="findings-list">
+      {% for finding in active_findings %}
+        <details class="evidence-panel" id="finding-panel-{{ finding.id }}" open>
+          <summary class="evidence-summary">
+            <div class="summary-left">
+              <span class="badge {% if finding.is_impact_confirmed %}badge-danger{% elif finding.is_demo_finding %}badge-demo{% else %}badge-warning{% endif %}">
+                {{ finding.get_category_display }}
+              </span>
+              {% if finding.rule and finding.rule.is_demo_only %}
+                <span class="badge badge-demo">DEMO ONLY — NOT OFFICIAL GUIDANCE</span>
+              {% elif finding.rule %}
+                <span class="badge badge-neutral">{{ finding.rule.get_verification_status_display }}</span>
+              {% endif %}
+              <strong>{{ finding.title }}</strong>
+            </div>
+            <div class="summary-right">
+              <span class="impact-tag">
+                Amount to Review: <strong>{{ session.currency }} {{ finding.financial_impact|floatformat:2|intcomma }}</strong>
+              </span>
+              <span class="badge badge-neutral">{{ finding.get_review_status_display }}</span>
+            </div>
+          </summary>
+
+          <div class="evidence-body">
+            <div class="evidence-grid">
+              <div class="evidence-box">
+                <h5>1. Facts Extracted From Bill</h5>
+                {% if finding.bill_item %}
+                  <ul class="fact-list">
+                    <li><strong>Original Description:</strong> {{ finding.bill_item.original_description }} (Line #{{ finding.bill_item.line_number }})</li>
+                    <li><strong>Extracted Quantity &amp; Unit:</strong> {{ finding.bill_item.quantity|default:"Missing" }} {{ finding.bill_item.unit }}</li>
+                    <li><strong>Extracted Unit Price:</strong> {% if finding.bill_item.unit_price is not None %}{{ session.currency }} {{ finding.bill_item.unit_price|floatformat:2|intcomma }}{% else %}Missing{% endif %}</li>
+                    <li><strong>Billed Line Total:</strong> {% if finding.bill_item.billed_line_total is not None %}{{ session.currency }} {{ finding.bill_item.billed_line_total|floatformat:2|intcomma }}{% else %}Missing{% endif %}</li>
+                    <li><strong>Calculated (Qty &times; Rate):</strong> {% if finding.bill_item.computed_line_total is not None %}{{ session.currency }} {{ finding.bill_item.computed_line_total|floatformat:2|intcomma }}{% else %}Unavailable{% endif %}</li>
+                  </ul>
+                {% else %}
+                  <p>{{ finding.supporting_evidence }}</p>
+                {% endif %}
+              </div>
+
+              <div class="evidence-box">
+                <h5>2. Audit Engine Evaluation &amp; Source Evidence</h5>
+                <p><strong>Explanation:</strong> {{ finding.explanation }}</p>
+                <p style="margin-top: 8px;"><strong>Calculation Basis:</strong> <code>{{ finding.calculation_basis }}</code></p>
+                <p style="margin-top: 8px;"><strong>Supporting Evidence:</strong> {{ finding.supporting_evidence }}</p>
+                {% if finding.rule %}
+                  <div class="rule-meta-box">
+                    <div><strong>Applicable Rule:</strong> {{ finding.rule.rule_id }} — {{ finding.rule.title }}</div>
+                    <div><strong>Rule Status:</strong> {{ finding.rule.get_verification_status_display }}</div>
+                    <div><strong>Source Title:</strong> {{ finding.rule.source_title }}</div>
+                    {% if finding.rule.source_url %}
+                      <div><strong>Supporting Source URL:</strong> <a href="{{ finding.rule.source_url }}" target="_blank" rel="noopener noreferrer">{{ finding.rule.source_url }}</a></div>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="evidence-footer">
+              <div class="next-step-box"><strong>Recommended Next Step:</strong> {{ finding.recommended_action }}</div>
+              <div class="cautious-actions">
+                <a href="{% url 'auditor:review_extraction' session.audit_uid %}" class="btn btn-sm btn-outline">Correct Extracted Data</a>
+                {% if finding.review_status != 'REVIEWED' %}
+                  <form method="post" action="{% url 'auditor:finding_action' session.audit_uid finding.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="mark_reviewed">
+                    <button type="submit" class="btn btn-sm btn-secondary">Mark Finding as Reviewed</button>
+                  </form>
+                {% endif %}
+                {% if finding.rule and finding.bill_item %}
+                  <form method="post" action="{% url 'auditor:finding_action' session.audit_uid finding.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="exclude_and_rerun">
+                    <button type="submit" class="btn btn-sm btn-outline">Exclude Match &amp; Rerun Audit</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h4>No Discrepancies Detected by Available Checks</h4>
+      <p>All listed line-item calculations reconciled with the reported grand total and no active rules were triggered.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

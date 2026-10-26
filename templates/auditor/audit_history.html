@@ -1,0 +1,82 @@
+﻿{% extends "auditor/base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3>Audit History</h3>
+      <p class="card-subtitle">Browse, filter, reopen, or delete past hospital bill audits.</p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <a href="{% url 'auditor:upload' %}" class="btn btn-sm btn-primary">+ New Audit</a>
+      <a href="{% url 'auditor:launch_demo' %}" class="btn btn-sm btn-outline">Load Demo (DEMO-001)</a>
+    </div>
+  </div>
+
+  <form method="get" class="filter-bar">
+    <input type="text" name="q" value="{{ search_query }}" placeholder="Search by hospital name, bill reference, or Audit ID..." class="filter-input">
+    <select name="status" class="filter-select">
+      <option value="">All Audit Statuses</option>
+      {% for code, label in status_choices %}
+        <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    {% if search_query or status_filter %}
+      <a href="{% url 'auditor:audit_history' %}" class="btn btn-outline">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if audits %}
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Audit ID</th>
+            <th>Date</th>
+            <th>Hospital Name</th>
+            <th>Bill Reference</th>
+            <th class="num-col">Total Billed</th>
+            <th class="num-col">Amount to Review</th>
+            <th>Audit Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for audit in audits %}
+            <tr>
+              <td>
+                <span class="mono-id">{{ audit.audit_uid }}</span>
+                {% if audit.is_demo %}<span class="badge badge-demo">DEMO</span>{% endif %}
+              </td>
+              <td>{{ audit.created_at|date:"Y-m-d H:i" }}</td>
+              <td><strong>{{ audit.hospital_name }}</strong></td>
+              <td>{{ audit.bill_reference }}</td>
+              <td class="num-col">{{ audit.currency }} {{ audit.reported_grand_total|floatformat:2|intcomma }}</td>
+              <td class="num-col"><strong>{{ audit.currency }} {{ audit.potential_amount_to_review|floatformat:2|intcomma }}</strong></td>
+              <td><span class="status-pill status-{{ audit.processing_status|lower }}">{{ audit.get_processing_status_display }}</span></td>
+              <td class="actions-cell">
+                <a href="{% url 'auditor:audit_detail' audit.audit_uid %}" class="btn btn-sm btn-primary">Open</a>
+                <a href="{% url 'auditor:download_report_pdf' audit.audit_uid %}" class="btn btn-sm btn-outline">PDF</a>
+                <form method="post" action="{% url 'auditor:delete_audit' audit.audit_uid %}" style="display:inline;" onsubmit="return confirm('Delete audit {{ audit.audit_uid }}?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-danger-outline">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h4>No matching audits found</h4>
+      <div class="empty-actions">
+        <a href="{% url 'auditor:launch_demo' %}" class="btn btn-primary">Launch Demo Audit</a>
+        <a href="{% url 'auditor:manual_entry' %}" class="btn btn-outline">Manual Bill Entry</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

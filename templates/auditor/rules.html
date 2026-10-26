@@ -1,0 +1,67 @@
+﻿{% extends "auditor/base.html" %}
+
+{% block content %}
+<div class="rules-legend-grid">
+  <div class="legend-card">
+    <span class="badge badge-success">Source-Verified Rule</span>
+    <p style="margin-top: 6px;">A rule whose supporting official document or transparency principle has been checked and linked.</p>
+  </div>
+  <div class="legend-card">
+    <span class="badge badge-demo">Demo Rule (DEMO ONLY)</span>
+    <p style="margin-top: 6px;">A fictional rule used solely to demonstrate package-inclusion logic on <code>DEMO-001</code>. Never applied to real bills.</p>
+  </div>
+  <div class="legend-card">
+    <span class="badge badge-neutral">Unverified Rule</span>
+    <p style="margin-top: 6px;">A rule awaiting source or eligibility verification. Cannot automatically produce a confirmed financial impact.</p>
+  </div>
+</div>
+
+<section class="card">
+  <h3>Source-Verified Rules</h3>
+  {% for rule in verified_rules %}
+    <div class="rule-item-card" style="margin-top: 12px;">
+      <span class="mono-id">{{ rule.rule_id }}</span>
+      <span class="badge badge-success">{{ rule.get_verification_status_display }}</span>
+      <h4 style="margin-top: 6px;">{{ rule.title }}</h4>
+      <p>{{ rule.description }}</p>
+      <div class="rule-meta-grid">
+        <div><strong>Jurisdiction:</strong> {{ rule.jurisdiction_or_scheme }}</div>
+        <div><strong>Source:</strong> {{ rule.source_title }} {% if rule.source_url %}(<a href="{{ rule.source_url }}" target="_blank">Link</a>){% endif %}</div>
+        <div><strong>Conditions:</strong> <code>{{ rule.applicability_conditions }}</code></div>
+      </div>
+    </div>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h3>Demonstration-Only Rules (Synthetic Scenarios Only)</h3>
+  {% for rule in demo_rules %}
+    <div class="rule-item-card rule-card-demo" style="margin-top: 12px;">
+      <span class="mono-id">{{ rule.rule_id }}</span>
+      <span class="badge badge-demo">DEMO ONLY — NOT OFFICIAL GUIDANCE</span>
+      <h4 style="margin-top: 6px;">{{ rule.title }}</h4>
+      <p>{{ rule.description }}</p>
+      <div class="rule-meta-grid">
+        <div><strong>Applicable Context:</strong> {{ rule.jurisdiction_or_scheme }}</div>
+        <div><strong>Conditions:</strong> <code>{{ rule.applicability_conditions }}</code></div>
+      </div>
+    </div>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h3>Unverified Rules (Verification Prompt Only)</h3>
+  {% for rule in unverified_rules %}
+    <div class="rule-item-card" style="margin-top: 12px;">
+      <span class="mono-id">{{ rule.rule_id }}</span>
+      <span class="badge badge-neutral">{{ rule.get_verification_status_display }}</span>
+      <h4 style="margin-top: 6px;">{{ rule.title }}</h4>
+      <p>{{ rule.description }}</p>
+      <div class="rule-meta-grid">
+        <div><strong>Context:</strong> {{ rule.jurisdiction_or_scheme }}</div>
+        <div><strong>Conditions:</strong> <code>{{ rule.applicability_conditions }}</code></div>
+      </div>
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}

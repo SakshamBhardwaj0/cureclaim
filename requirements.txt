@@ -1,0 +1,6 @@
+Django>=5.2,<5.3
+python-dotenv>=1.0.1
+Pillow>=10.3.0
+pypdf>=4.2.0
+reportlab>=4.2.0
+google-genai>=1.0.0
